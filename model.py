@@ -1,6 +1,8 @@
 import torch
 import math
 
+
+
 class DecoderModel(torch.nn.Module):
   def __init__(self, max_seq_len, vocab_len, embedding_dimensions):
     super(DecoderModel, self).__init__()
@@ -37,6 +39,8 @@ class DecoderModel(torch.nn.Module):
 
   def get_pos_matrix(self):
     store = torch.zeros(self.max_seq_len, self.embedding_dimensions)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    store = store.to(device)
     for pos in range(self.max_seq_len):
       for i in range(0, self.embedding_dimensions, 2):
         denominator = 10000 ** (2 * i / self.embedding_dimensions)
