@@ -20,7 +20,7 @@ torch.manual_seed(42)
 
 learning_rate = 0.001
 max_seq_len = 2200
-epochs = 100
+epochs = 2
 batch_size = 32
 tokenizer = SentencePieceTokenizer()
 vocab_len = tokenizer.get_vocab_size()
