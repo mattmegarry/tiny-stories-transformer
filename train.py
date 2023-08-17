@@ -7,6 +7,10 @@ from sentencepeice_tokenizer import SentencePieceTokenizer
 from tiny_stories_dataset import TinyStoriesDataset, pad
 from model import DecoderModel
 
+from config import Config
+config = Config()
+wb = config.USE_WANDB
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(device)
 a = torch.zeros(4,3)    
@@ -16,27 +20,28 @@ torch.manual_seed(42)
 
 learning_rate = 0.001
 max_seq_len = 2200
-epochs = 1000
+epochs = 100
 batch_size = 32
 tokenizer = SentencePieceTokenizer()
 vocab_len = tokenizer.get_vocab_size()
 dataset = TinyStoriesDataset(tokenizer)
 
-""" wandb.init(
-    project="tiny-stories-decoder",
-    config={
-    "learning_rate": learning_rate,
-    "max_seq_len": max_seq_len,
-    "vocab_len": vocab_len,
-    "batch_size": batch_size,
-    "dataset": dataset.get_data_filename(),
-    "epochs": epochs,
-    "architecture": "decoder-only"
-    }
-) """
+if wb: 
+   wandb.init(
+      project="tiny-stories-decoder",
+      config={
+      "learning_rate": learning_rate,
+      "max_seq_len": max_seq_len,
+      "vocab_len": vocab_len,
+      "batch_size": batch_size,
+      "dataset": dataset.get_data_filename(),
+      "epochs": epochs,
+      "architecture": "decoder-only"
+      }
+  )
 
 dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True, collate_fn=pad)
-model = DecoderModel(max_seq_len, vocab_len, embedding_dimensions=256)
+model = DecoderModel(max_seq_len, vocab_len, embedding_dimensions=512)
 model = model.to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
@@ -56,13 +61,13 @@ for epoch in range(epochs):
 
     probabilities = model(x)
     loss = torch.nn.functional.cross_entropy(probabilities.view(-1, vocab_len), y.view(-1), ignore_index=0)
-    """ wandb.log({"loss": loss}) """
+    if wb: wandb.log({"loss": loss})
     if idx % 1000 == 0: 
       print("Loss:", loss.item())
     loss.backward()
     optimizer.step()
     optimizer.zero_grad()
-""" wandb.finish() """
+    if wb: wandb.finish()
 
 #%%
 print("Running generate...")
