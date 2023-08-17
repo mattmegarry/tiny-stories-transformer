@@ -11,7 +11,7 @@ class DecoderModel(torch.nn.Module):
     self.vocab_len   = vocab_len
     self.embedding_dimensions = embedding_dimensions
 
-    self.embedding    = torch.nn.Embedding(self.vocab_len, self.embedding_dimensions).to("cuda")
+    self.embedding    = torch.nn.Embedding(self.vocab_len, self.embedding_dimensions)
     self.pos_emb      = self.get_pos_matrix()
 
     self.add_and_norm = AddAndNorm(self.embedding_dimensions)

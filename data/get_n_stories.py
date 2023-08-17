@@ -1,7 +1,7 @@
 import re
 import os
 
-num_stories = 2000000
+num_stories = 200000
 count = 0
 training_filename = 'TinyStories-' + str(num_stories) + '.txt'
 

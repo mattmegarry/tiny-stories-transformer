@@ -8,7 +8,7 @@ def pad(sequences, batch_first=True, padding_value=0.0):
 
 class TinyStoriesDataset(torch.utils.data.Dataset):
   def __init__(self, tokenizer):
-    self.data_filename = "TinyStories-2000000.txt"
+    self.data_filename = "TinyStories-200000.txt"
     f = open("data/" + self.data_filename, 'r')
     self.story_lines = f.read().split('\n')
     self.tokenizer = tokenizer

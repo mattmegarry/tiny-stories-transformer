@@ -11,6 +11,7 @@ from config import Config
 config = Config()
 wb = config.USE_WANDB
 
+torch.cuda.empty_cache()
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(device)
 a = torch.zeros(4,3)    
@@ -20,8 +21,8 @@ torch.manual_seed(42)
 
 learning_rate = 0.001
 max_seq_len = 2200
-epochs = 2
-batch_size = 32
+epochs = 10
+batch_size = 16
 tokenizer = SentencePieceTokenizer()
 vocab_len = tokenizer.get_vocab_size()
 dataset = TinyStoriesDataset(tokenizer)
@@ -41,7 +42,7 @@ if wb:
   )
 
 dataloader = torch.utils.data.DataLoader(dataset, batch_size=batch_size, shuffle=True, collate_fn=pad)
-model = DecoderModel(max_seq_len, vocab_len, embedding_dimensions=512)
+model = DecoderModel(max_seq_len, vocab_len, embedding_dimensions=256)
 model = model.to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
