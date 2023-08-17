@@ -1,0 +1,6 @@
+env/
+__pycache__/
+vocab9866.model
+vocab9866.vocab
+TinyStories-train.txt
+wandb/
