@@ -56,6 +56,7 @@ model = model.to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
 # %%
+max_val_loss = float('inf')
 for epoch in range(epochs):
     print("Epoch:", epoch)
     model.train()
@@ -98,6 +99,11 @@ for epoch in range(epochs):
         if idx % 1000 == 0:
             print("Validation Loss:", loss.item())   
     
+        if loss.item() < max_val_loss:
+            max_val_loss = loss.item()
+            torch.save(model.state_dict(), "decoder-model.pt")
+            print("Model saved!")
+
     if wb:
         wandb.finish()
 
