@@ -14,7 +14,7 @@ class DecoderModel(torch.nn.Module):
     self.embedding    = torch.nn.Embedding(self.vocab_len, self.embedding_dimensions)
     self.pos_emb      = self.get_pos_matrix()
 
-    self.attn = SelfAttention(self.max_seq_len, self.embedding_dimensions)
+    self.attn = MultiHeadAttention(self.max_seq_len, self.embedding_dimensions, 4)
     self.add_and_norm = AddAndNorm(self.embedding_dimensions)
 
     self.feed_forward = FeedForward(self.embedding_dimensions)
@@ -43,7 +43,41 @@ class DecoderModel(torch.nn.Module):
         store[pos, i] = math.sin(pos / denominator)
         if i + 1 < self.embedding_dimensions: store[pos, i + 1] = math.cos(pos / denominator)
     return store
-  
+
+
+
+class MultiHeadAttention(torch.nn.Module):
+   def __init__(self, max_seq_len, embedding_dimensions, num_heads):
+      super(MultiHeadAttention, self).__init__()
+      self.max_seq_len = max_seq_len
+      assert embedding_dimensions % num_heads == 0, "Embedding dimensions must be divisible by number of heads"
+      
+      self.register_buffer("mask", torch.tril(torch.ones(max_seq_len, max_seq_len)).view(1, 1, max_seq_len, max_seq_len))
+
+      self.num_heads = num_heads
+      self.embedding_dimensions = embedding_dimensions
+      self.head_size = embedding_dimensions // num_heads
+
+      self.qkv_projection = torch.nn.Linear(embedding_dimensions, 3 * embedding_dimensions)
+
+   def forward(self, x_embeddings, x):
+      batch_size, seq_len, _ = x_embeddings.size()
+
+      q, k, v  = self.qkv_projection(x_embeddings).split(self.embedding_dimensions, dim=2)
+      queries = q.view(batch_size, seq_len, self.num_heads, self.head_size).transpose(1, 2)
+      keys = k.view(batch_size, seq_len, self.num_heads, self.head_size).transpose(1, 2)
+      values = v.view(batch_size, seq_len, self.num_heads, self.head_size).transpose(1, 2)
+
+      att = (queries @ keys.transpose(-2, -1)) * (1.0 / math.sqrt(keys.size(-1)))
+      att = att.masked_fill(self.mask[:, :, :seq_len, :seq_len] == 0, float('-inf'))
+      att = torch.nn.functional.softmax(att, dim=-1)
+      y = att @ values
+      y = y.transpose(1, 2).contiguous().view(batch_size, seq_len, self.embedding_dimensions)
+
+      return y
+
+
+
 class SelfAttention(torch.nn.Module):
     def __init__(self, max_seq_len, embedding_dimensions):
         super(SelfAttention, self).__init__()
@@ -65,7 +99,9 @@ class SelfAttention(torch.nn.Module):
         att = torch.nn.functional.softmax(att, dim=1)
         res = torch.bmm(att, val)
         return res
-   
+
+
+
 class AddAndNorm(torch.nn.Module):
     def __init__(self, embedding_dimensions):
         super(AddAndNorm, self).__init__()
@@ -73,7 +109,9 @@ class AddAndNorm(torch.nn.Module):
 
     def forward(self, sublayer_output, residual_x):
         return self.layer_norm(sublayer_output + residual_x)
-    
+
+
+
 class FeedForward(torch.nn.Module):
    def __init__(self, embedding_dimensions):
       super(FeedForward, self).__init__()
