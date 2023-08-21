@@ -8,3 +8,4 @@ TinyStories-train.txt
 TinyStories-2000000.txt
 TinyStories-200000.txt
 wandb/
+.vscode/
