@@ -1,16 +1,29 @@
 import sentencepiece as spm
-from ..train import num_stories
+import sys
+from get_n_stories import write_n_stories
 
-# There is also a more pytorch way of doing this.
+
+sys.path.append('../')
+from tiny_stories_transformer.config import get_num_stories
+
+num_stories = str(get_num_stories())
+filename = './sentencepiece/TinyStories-' + num_stories + '.txt'
+
+try:
+    open(filename)
+except FileNotFoundError:
+    print("File not found. Running get_n_stories.py")
+    write_n_stories(int(num_stories))
+
 
 # train sentencepiece model from `botchan.txt` and makes `m.model` and `m.vocab`
 # `m.vocab` is just a reference. not used in the segmentation.
 spm.SentencePieceTrainer.train(
-    '--input=../data/TinyStories-' + num_stories + '.txt --model_prefix=m --vocab_size=2000')
+    '--input=./sentencepiece/TinyStories-' + num_stories + '.txt --model_prefix=./sentencepiece/m --vocab_size=1472')
 
 # makes segmenter instance and loads the model file (m.model)
 sp = spm.SentencePieceProcessor()
-sp.load('m.model')
+sp.load('./sentencepiece/m.model')
 
 # encode: text => id
 print(sp.encode_as_pieces('This is a test'))

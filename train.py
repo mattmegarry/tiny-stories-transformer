@@ -4,12 +4,14 @@ import matplotlib.pyplot as plt
 import wandb
 
 from utils.sentencepiece_tokenizer import SentencePieceTokenizer
+from config import num_stories
 from dataset import TinyStoriesDataset, pad
 from model import DecoderModel
 
 
 # %%
-num_stories = 100
+
+num_stories = num_stories()
 wb = False
 learning_rate = 0.001
 max_seq_len = 2200
@@ -20,7 +22,7 @@ embedding_dimensions = 256
 # %%
 torch.cuda.empty_cache()
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-print("Device is: " + device)
+print("Device is: " + str(device))
 
 torch.manual_seed(42)
 
