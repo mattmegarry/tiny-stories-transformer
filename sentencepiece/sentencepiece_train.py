@@ -1,10 +1,12 @@
 import sentencepiece as spm
+from ..train import num_stories
 
-# There is also a more pytorch way of doing this. 
+# There is also a more pytorch way of doing this.
 
 # train sentencepiece model from `botchan.txt` and makes `m.model` and `m.vocab`
 # `m.vocab` is just a reference. not used in the segmentation.
-spm.SentencePieceTrainer.train('--input=../data/TinyStories-200000.txt --model_prefix=m --vocab_size=24534')
+spm.SentencePieceTrainer.train(
+    '--input=../data/TinyStories-' + num_stories + '.txt --model_prefix=m --vocab_size=2000')
 
 # makes segmenter instance and loads the model file (m.model)
 sp = spm.SentencePieceProcessor()
@@ -31,4 +33,4 @@ print(sp.piece_to_id('__MUST_BE_UNKNOWN__'))
 # <unk>, <s>, </s> are defined by default. Their ids are (0, 1, 2)
 # <s> and </s> are defined as 'control' symbol.
 for id in range(3):
-  print(sp.id_to_piece(id), sp.is_control(id))
+    print(sp.id_to_piece(id), sp.is_control(id))

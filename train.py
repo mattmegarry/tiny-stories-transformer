@@ -3,12 +3,13 @@ import torch
 import matplotlib.pyplot as plt
 import wandb
 
-from utils.sentencepeice_tokenizer import SentencePieceTokenizer
+from utils.sentencepiece_tokenizer import SentencePieceTokenizer
 from dataset import TinyStoriesDataset, pad
 from model import DecoderModel
 
 
 # %%
+num_stories = 100
 wb = False
 learning_rate = 0.001
 max_seq_len = 2200

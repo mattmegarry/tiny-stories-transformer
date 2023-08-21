@@ -1,5 +1,5 @@
 import torch
-from utils.sentencepeice_tokenizer import SentencePieceTokenizer
+from utils.sentencepiece_tokenizer import SentencePieceTokenizer
 
 tokenizer = SentencePieceTokenizer()
 
