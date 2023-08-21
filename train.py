@@ -58,6 +58,7 @@ optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 # %%
 for epoch in range(epochs):
     print("Epoch:", epoch)
+    model.train()
     for idx, batch in enumerate(train_loader):
         sos = torch.full((batch.shape[0], 1), 1)
         eos = torch.full((batch.shape[0], 1), 2)
