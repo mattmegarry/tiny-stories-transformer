@@ -4,20 +4,20 @@ import matplotlib.pyplot as plt
 import wandb
 
 from utils.sentencepiece_tokenizer import SentencePieceTokenizer
-from config import num_stories
+from config import get_num_stories
 from dataset import TinyStoriesDataset, pad
 from model import DecoderModel
 
 
 # %%
 
-num_stories = num_stories()
+num_stories = get_num_stories()
 wb = False
 learning_rate = 0.001
 max_seq_len = 2200
-epochs = 10
+epochs = 1000
 batch_size = 16
-embedding_dimensions = 256
+embedding_dimensions = 32
 
 # %%
 torch.cuda.empty_cache()

@@ -2,7 +2,7 @@ from torchtext.data.functional import load_sp_model
 
 class SentencePieceTokenizer:
     def __init__(self):
-        self.sp_model = load_sp_model("sentencepeice/m.model")
+        self.sp_model = load_sp_model("./sentencepiece/m.model")
     
     def encode(self, text):
         return self.sp_model.EncodeAsIds(text)
