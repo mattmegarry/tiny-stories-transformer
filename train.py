@@ -2,6 +2,7 @@
 import torch
 import matplotlib.pyplot as plt
 import wandb
+import numpy as np
 
 from utils.sentencepiece_tokenizer import SentencePieceTokenizer
 from config import get_num_stories
@@ -15,7 +16,7 @@ num_stories = get_num_stories()
 wb = False
 learning_rate = 0.001
 max_seq_len = 2200
-epochs = 1000
+epochs = 100
 batch_size = 16
 embedding_dimensions = 32
 
@@ -44,8 +45,12 @@ if wb:
         }
     )
 
-dataloader = torch.utils.data.DataLoader(
-    dataset, batch_size=batch_size, shuffle=True, collate_fn=pad)
+num_train = int(0.8 * len(dataset))
+train_dataset, val_dataset = torch.utils.data.random_split(dataset, [num_train, len(dataset) - num_train])
+train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size, shuffle=True, collate_fn=pad)
+val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=batch_size, shuffle=True, collate_fn=pad)
+
+
 model = DecoderModel(max_seq_len, vocab_len, embedding_dimensions)
 model = model.to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
@@ -53,7 +58,7 @@ optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 # %%
 for epoch in range(epochs):
     print("Epoch:", epoch)
-    for idx, batch in enumerate(dataloader):
+    for idx, batch in enumerate(train_loader):
         sos = torch.full((batch.shape[0], 1), 1)
         eos = torch.full((batch.shape[0], 1), 2)
 
@@ -74,8 +79,26 @@ for epoch in range(epochs):
         loss.backward()
         optimizer.step()
         optimizer.zero_grad()
-        if wb:
-            wandb.finish()
+
+    model.eval()
+    val_losses = []
+    for idx, batch in enumerate(val_loader):
+        sos = torch.full((batch.shape[0], 1), 1)
+        eos = torch.full((batch.shape[0], 1), 2)
+
+        x_val = batch
+        x_val = torch.cat([sos, x_val], dim=1) 
+        y_val = torch.cat([x_val[:, 1:], eos], dim=1)
+        
+        x_val, y_val = x_val.to(device), y_val.to(device)   
+        
+        probabilities = model(x_val)
+        loss = torch.nn.functional.cross_entropy(probabilities.view(-1, vocab_len), y_val.view(-1), ignore_index=0)
+        if idx % 1000 == 0:
+            print("Validation Loss:", loss.item())   
+    
+    if wb:
+        wandb.finish()
 
 # %%
 print("Running generate...")
