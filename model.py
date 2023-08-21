@@ -14,10 +14,9 @@ class DecoderModel(torch.nn.Module):
     self.embedding    = torch.nn.Embedding(self.vocab_len, self.embedding_dimensions)
     self.pos_emb      = self.get_pos_matrix()
 
+    self.attn = SelfAttention(self.max_seq_len, self.embedding_dimensions)
     self.add_and_norm = AddAndNorm(self.embedding_dimensions)
 
-    self.attn_one = SelfAttention(self.max_seq_len, self.embedding_dimensions)
-    self.attn_two = SelfAttention(self.max_seq_len, self.embedding_dimensions)
     self.feed_forward = FeedForward(self.embedding_dimensions)
     self.map_to_vocab = torch.nn.Linear(self.embedding_dimensions, self.vocab_len)
 
@@ -26,13 +25,10 @@ class DecoderModel(torch.nn.Module):
     pos = self.pos_emb[0:x.shape[1], :]
     pos_emb_x = emb + pos
 
-    attn_one = self.attn_one(pos_emb_x, x=x)
-    attn_one_add_norm = self.add_and_norm(attn_one, pos_emb_x)
-
-    attn_two = self.attn_two(attn_one_add_norm, x=x)
-    attn_two_add_norm = self.add_and_norm(attn_two, attn_one_add_norm)
+    attn = self.attn(pos_emb_x, x=x)
+    attn_add_norm = self.add_and_norm(attn, pos_emb_x)
     
-    res = self.feed_forward(attn_two_add_norm)
+    res = self.feed_forward(attn_add_norm)
     out = self.map_to_vocab(res)
 
     return out
