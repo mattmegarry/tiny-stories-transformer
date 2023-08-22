@@ -71,7 +71,7 @@ for epoch in range(epochs):
         x = x.to(device)
         y = y.to(device)
 
-        probabilities = model(x)
+        probabilities = model(x, y)
         loss = torch.nn.functional.cross_entropy(
             probabilities.view(-1, vocab_len), y.view(-1), ignore_index=0)
         if wb:
@@ -94,7 +94,7 @@ for epoch in range(epochs):
         
         x_val, y_val = x_val.to(device), y_val.to(device)   
         
-        probabilities = model(x_val)
+        probabilities = model(x_val, y_val)
         loss = torch.nn.functional.cross_entropy(probabilities.view(-1, vocab_len), y_val.view(-1), ignore_index=0)
         if idx % 1000 == 0:
             print("Validation Loss:", loss.item())   

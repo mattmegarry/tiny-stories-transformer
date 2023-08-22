@@ -64,15 +64,19 @@ class DecoderBlock(torch.nn.Module):
       super(DecoderBlock, self).__init__()
       self.embedding_dimensions = embedding_dimensions
 
+      self.encoder_qkv_projection = torch.nn.Linear(embedding_dimensions, 3 * embedding_dimensions)
+      self.decoder_merge = torch.nn.Linear(3 * embedding_dimensions, embedding_dimensions)
+
       self.masked_sublayer = CausalSublayer(max_seq_len, embedding_dimensions, num_heads)
       self.unmasked_sublayer = NonCausalSublayer(max_seq_len, embedding_dimensions, num_heads)
 
     def forward(self, source, target):
-      causal_output = self.masked_sublayer(target)
-      target_q, target_k, target_v = causal_output.split(self.embedding_dimensions, dim=-1)  
+      causal_output = self.masked_sublayer(target) # This might be wrong
 
+      source = self.encoder_qkv_projection(source)
       source_q, source_k, source_v = source.split(self.embedding_dimensions, dim=-1)
-      non_causal_input = torch.cat([target_q, source_k, source_v], dim=-1)
+      non_causal_input = torch.cat([causal_output, source_k, source_v], dim=-1)
+      non_causal_input = self.decoder_merge(non_causal_input)
       output = self.unmasked_sublayer(non_causal_input)
       return output
     
