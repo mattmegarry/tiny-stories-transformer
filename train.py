@@ -16,7 +16,7 @@ num_stories = get_num_stories()
 wb = False
 learning_rate = 0.001
 max_seq_len = 2200
-epochs = 100
+epochs = 2
 batch_size = 16
 embedding_dimensions = 32
 
@@ -111,13 +111,14 @@ for epoch in range(epochs):
 print("Running generate...")
 max_seq_len = 20
 
-
-def generate_from_string(string):
+# Decoder only
+def generate(string):
+    model.eval()
     sos = torch.full((1, 1), 1)
     x = torch.cat([sos, torch.tensor([tokenizer.encode(string)])], dim=1)
     x = x.to(device)
     while True:
-        p = model(x)
+        p = model(x, target=None)
         p = torch.nn.functional.softmax(p[:, -1, :], dim=1)
         max_probability_response = torch.argmax(p, dim=1)
         max_probability_token = int(max_probability_response[0])
@@ -128,9 +129,38 @@ def generate_from_string(string):
     print("Generate:", tokenizer.decode(x[0].tolist()))
     print(x[0].tolist())
 
+# Encoder-decoder
+def generate(string):
+    model.eval()
+    sos = torch.full((1, 1), 1)
+    x = torch.cat([sos, torch.tensor([tokenizer.encode(string)])], dim=1)
+    x = x.to(device)
+    while True:
+        p = model(x, target=None)
+        p = torch.nn.functional.softmax(p[:, -1, :], dim=1)
+        max_probability_response = torch.argmax(p, dim=1)
+        max_probability_token = int(max_probability_response[0])
+        p = max_probability_response.unsqueeze(0)
+        x = torch.cat((x, p), dim=-1)
+        if max_probability_token == 2 or len(x[0].tolist()) >= max_seq_len:
+            break
+    print("Generate:", tokenizer.decode(x[0].tolist()))
+    print(x[0].tolist())
 
-generate_from_string("The man")
-generate_from_string("The woman")
-generate_from_string("In the beginning")
-generate_from_string("Once upon a time")
-generate_from_string("Once upon a time, there was a")
+generate("The man")
+generate("The woman")
+generate("In the beginning")
+generate("Once upon a time")
+generate("Once upon a time, there was a")
+
+# %%
+# Encoder-decoder
+
+sos = torch.full((1, 1), 1)
+batch = torch.tensor([tokenizer.encode("The man")])
+x = batch
+x = torch.cat([sos, x], dim=1)
+x = x.to(device)
+print(model.translate(x))
+
+# %%

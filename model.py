@@ -8,7 +8,6 @@ decoder_layers = 6
 class Transformer(torch.nn.Module):
   def __init__(self, max_seq_len, vocab_len, embedding_dimensions):
     super(Transformer, self).__init__()
-    
     self.max_seq_len = max_seq_len
     self.vocab_len   = vocab_len
     self.embedding_dimensions = embedding_dimensions
@@ -21,18 +20,24 @@ class Transformer(torch.nn.Module):
     self.final_layer_norm = torch.nn.LayerNorm(self.embedding_dimensions)
     self.map_to_vocab = torch.nn.Linear(self.embedding_dimensions, self.vocab_len)
 
-  def forward(self, source, target):
+  def forward(self, source, target=None):
     emb = self.embedding(source)
     pos = self.pos_emb[0:source.shape[1], :]
     source = emb + pos
     source = self.dropout(source)
-    for encoder_block in self.encoder_blocks: source = encoder_block(source)
 
-    emb = self.embedding(target)
-    pos = self.pos_emb[0:target.shape[1], :]
-    target = emb + pos
-    target = self.dropout(target)
-    for decoder_block in self.decoder_blocks: out = decoder_block(source, target)
+    out = None
+    if target is not None:
+      for encoder_block in self.encoder_blocks: source = encoder_block(source)
+
+      emb = self.embedding(target.long())
+      pos = self.pos_emb[0:target.shape[1], :]
+      target = emb + pos
+      target = self.dropout(target)
+
+      for decoder_block in self.decoder_blocks: out = decoder_block(source, target)
+    else:
+      for decoder_block in self.decoder_blocks: out = decoder_block(source) 
     
     out = self.final_layer_norm(out)
     out = self.map_to_vocab(out)
@@ -49,6 +54,21 @@ class Transformer(torch.nn.Module):
         store[pos, i] = math.sin(pos / denominator)
         if i + 1 < self.embedding_dimensions: store[pos, i + 1] = math.cos(pos / denominator)
     return store
+  
+  def translate(self, src, num=20):
+    self.eval()
+    tgt = src # torch.tensor([[1]])
+    print(tgt)
+    for _ in range(num):
+      with torch.no_grad():
+        out = self(src, tgt)
+        out = out[:, -1, :]
+        nxt = torch.argmax(out, dim=-1, keepdim=True)
+        print(nxt)
+        if nxt.item() == 2: break
+        tgt = torch.cat([tgt, nxt], dim=1)
+    self.train()
+    return tgt
 
 class EncoderBlock(torch.nn.Module):
     def __init__(self, max_seq_len, embedding_dimensions, num_heads):
@@ -70,14 +90,23 @@ class DecoderBlock(torch.nn.Module):
       self.masked_sublayer = CausalSublayer(max_seq_len, embedding_dimensions, num_heads)
       self.unmasked_sublayer = NonCausalSublayer(max_seq_len, embedding_dimensions, num_heads)
 
-    def forward(self, source, target):
-      causal_output = self.masked_sublayer(target) # This might be wrong
+    def forward(self, source, target=None):
+      if target is not None:
+        causal_output = self.masked_sublayer(target) # This might be wrong
+      else:
+        causal_output = self.masked_sublayer(source) 
 
-      source = self.encoder_qkv_projection(source)
-      source_q, source_k, source_v = source.split(self.embedding_dimensions, dim=-1)
-      non_causal_input = torch.cat([causal_output, source_k, source_v], dim=-1)
-      non_causal_input = self.decoder_merge(non_causal_input)
-      output = self.unmasked_sublayer(non_causal_input)
+      if target is not None:
+        source = self.encoder_qkv_projection(source)
+        source_q, source_k, source_v = source.split(self.embedding_dimensions, dim=-1)
+        print(causal_output.shape)
+        print(source_k.shape)
+        print(source_v.shape)
+        non_causal_input = torch.cat([causal_output, source_k, source_v], dim=-1)
+        non_causal_input = self.decoder_merge(non_causal_input)
+        output = self.unmasked_sublayer(non_causal_input)
+      else:
+        output = self.unmasked_sublayer(causal_output)
       return output
     
 class NonCausalSublayer(torch.nn.Module):

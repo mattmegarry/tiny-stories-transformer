@@ -16,6 +16,17 @@ Generate: Once upon a time, there was a little girl named Tim. Tim loved to
 [1, 48, 38, 53, 7, 42, 6, 43, 10, 7, 45, 71, 59, 11, 34, 3, 34, 76, 11, 9]
 
 Encoder-Decoder training - source only
+Running generate...
+Generate: The man toand hear a fel” so himnand a fel” for
+[1, 13, 233, 9, 8, 252, 7, 91, 256, 32, 78, 67, 8, 7, 91, 256, 49, 2]
+Generate: The woman friendsand hear a me for
+[1, 13, 826, 70, 8, 252, 7, 222, 49, 2]
+Generate: In the beginning others pumpkin there He. "Mommy but’ever to.
+[1, 251, 5, 616, 351, 67, 31, 144, 15, 362, 43, 23, 3, 19, 226, 73, 173, 192, 9, 3]
+Generate: Once upon a time to it anyed by like had. had work knowly said fel
+[1, 48, 38, 53, 7, 42, 9, 16, 321, 14, 289, 74, 35, 3, 35, 378, 247, 132, 25, 91]
+Generate: Once upon a time, there was a me He. "Mommy but’ever to it
+[1, 48, 38, 53, 7, 42, 6, 43, 10, 7, 222, 23, 3, 19, 226, 73, 173, 192, 9, 16]
 
 Encoder-Decoder training - source to target
 Replacements...
