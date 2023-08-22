@@ -21,13 +21,19 @@ class Transformer(torch.nn.Module):
     self.final_layer_norm = torch.nn.LayerNorm(self.embedding_dimensions)
     self.map_to_vocab = torch.nn.Linear(self.embedding_dimensions, self.vocab_len)
 
-  def forward(self, x):
-    emb = self.embedding(x)
-    pos = self.pos_emb[0:x.shape[1], :]
-    pos_emb_x = emb + pos
-    out = self.dropout(pos_emb_x)
+  def forward(self, source, target):
+    emb = self.embedding(source)
+    pos = self.pos_emb[0:source.shape[1], :]
+    source = emb + pos
+    source = self.dropout(source)
+    for encoder_block in self.encoder_blocks: source = encoder_block(source)
 
-    for decoder_block in self.decoder_blocks: out = decoder_block(out)
+    emb = self.embedding(target)
+    pos = self.pos_emb[0:target.shape[1], :]
+    target = emb + pos
+    target = self.dropout(target)
+    for decoder_block in self.decoder_blocks: out = decoder_block(source, target)
+    
     out = self.final_layer_norm(out)
     out = self.map_to_vocab(out)
 
@@ -56,12 +62,18 @@ class EncoderBlock(torch.nn.Module):
 class DecoderBlock(torch.nn.Module):
     def __init__(self, max_seq_len, embedding_dimensions, num_heads):
       super(DecoderBlock, self).__init__()
-      self.masked_sublayer = CausalSublayer(max_seq_len, embedding_dimensions, num_heads)
-      self.sublayer = NonCausalSublayer(max_seq_len, embedding_dimensions, num_heads)
+      self.embedding_dimensions = embedding_dimensions
 
-    def forward(self, x):
-      output = self.masked_sublayer(x)
-      output = self.sublayer(output)
+      self.masked_sublayer = CausalSublayer(max_seq_len, embedding_dimensions, num_heads)
+      self.unmasked_sublayer = NonCausalSublayer(max_seq_len, embedding_dimensions, num_heads)
+
+    def forward(self, source, target):
+      causal_output = self.masked_sublayer(target)
+      target_q, target_k, target_v = causal_output.split(self.embedding_dimensions, dim=-1)  
+
+      source_q, source_k, source_v = source.split(self.embedding_dimensions, dim=-1)
+      non_causal_input = torch.cat([target_q, source_k, source_v], dim=-1)
+      output = self.unmasked_sublayer(non_causal_input)
       return output
     
 class NonCausalSublayer(torch.nn.Module):
