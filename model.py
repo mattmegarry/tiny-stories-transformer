@@ -115,15 +115,16 @@ class AddAndNorm(torch.nn.Module):
 
 
 class FeedForward(torch.nn.Module):
-   def __init__(self, embedding_dimensions):
+   def __init__(self, embedding_dimensions, ff_expansion=4):
       super(FeedForward, self).__init__()
-      self.feed_forward = torch.nn.Linear(embedding_dimensions, embedding_dimensions)
+      self.context_fully_connected = torch.nn.Linear(embedding_dimensions, embedding_dimensions * ff_expansion)
       self.relu = torch.nn.ReLU()
+      self.context_projection = torch.nn.Linear(embedding_dimensions * ff_expansion, embedding_dimensions)
 
    def forward(self, x):
-      x = self.feed_forward(x)
+      x = self.context_fully_connected(x)
       x = self.relu(x)
-      x = self.feed_forward(x)
+      x = self.context_projection(x)
       return x
     
 
