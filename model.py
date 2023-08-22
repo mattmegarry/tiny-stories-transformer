@@ -2,6 +2,7 @@ import torch
 import math
 
 dropout_rate = 0.1
+encoder_layers = 6
 decoder_layers = 6
 
 class Transformer(torch.nn.Module):
@@ -15,7 +16,8 @@ class Transformer(torch.nn.Module):
     self.embedding    = torch.nn.Embedding(self.vocab_len, self.embedding_dimensions)
     self.pos_emb      = self.get_pos_matrix()
     self.dropout      = torch.nn.Dropout(dropout_rate)
-    self.blocks = torch.nn.ModuleList([DecoderBlock(self.max_seq_len, self.embedding_dimensions, 4) for _ in range(decoder_layers)])
+    self.encoder_blocks = torch.nn.ModuleList([EncoderBlock(self.max_seq_len, self.embedding_dimensions, num_heads=4) for _ in range(encoder_layers)])
+    self.decoder_blocks = torch.nn.ModuleList([DecoderBlock(self.max_seq_len, self.embedding_dimensions, num_heads=4) for _ in range(decoder_layers)])
     self.final_layer_norm = torch.nn.LayerNorm(self.embedding_dimensions)
     self.map_to_vocab = torch.nn.Linear(self.embedding_dimensions, self.vocab_len)
 
@@ -25,7 +27,7 @@ class Transformer(torch.nn.Module):
     pos_emb_x = emb + pos
     out = self.dropout(pos_emb_x)
 
-    for block in self.blocks: out = block(out)
+    for decoder_block in self.decoder_blocks: out = decoder_block(out)
     out = self.final_layer_norm(out)
     out = self.map_to_vocab(out)
 
@@ -42,41 +44,15 @@ class Transformer(torch.nn.Module):
         if i + 1 < self.embedding_dimensions: store[pos, i + 1] = math.cos(pos / denominator)
     return store
 
+class EncoderBlock(torch.nn.Module):
+    def __init__(self, max_seq_len, embedding_dimensions, num_heads):
+      super(EncoderBlock, self).__init__()
+      self.sublayer = NonCausalSublayer(max_seq_len, embedding_dimensions, num_heads)
 
-
-class MultiHeadAttention(torch.nn.Module):
-   def __init__(self, max_seq_len, embedding_dimensions, num_heads, is_causal=False):
-      super(MultiHeadAttention, self).__init__()
-      self.is_causal = is_causal
-      self.max_seq_len = max_seq_len
-      assert embedding_dimensions % num_heads == 0, "Embedding dimensions must be divisible by number of heads"
-      
-      self.register_buffer("mask", torch.tril(torch.ones(max_seq_len, max_seq_len)).view(1, 1, max_seq_len, max_seq_len))
-
-      self.num_heads = num_heads
-      self.embedding_dimensions = embedding_dimensions
-      self.head_size = embedding_dimensions // num_heads
-
-      self.qkv_projection = torch.nn.Linear(embedding_dimensions, 3 * embedding_dimensions)
-      self.output_projection = torch.nn.Linear(embedding_dimensions, embedding_dimensions)
-
-   def forward(self, x_embeddings):
-      batch_size, seq_len, _ = x_embeddings.size()
-
-      q, k, v  = self.qkv_projection(x_embeddings).split(self.embedding_dimensions, dim=2)
-      queries = q.view(batch_size, seq_len, self.num_heads, self.head_size).transpose(1, 2)
-      keys = k.view(batch_size, seq_len, self.num_heads, self.head_size).transpose(1, 2)
-      values = v.view(batch_size, seq_len, self.num_heads, self.head_size).transpose(1, 2)
-
-      att = (queries @ keys.transpose(-2, -1)) * (1.0 / math.sqrt(keys.size(-1)))
-      att = att if self.is_causal == False else att.masked_fill(self.mask[:, :, :seq_len, :seq_len] == 0, float('-inf'))
-      att = torch.nn.functional.softmax(att, dim=-1)
-      y = att @ values
-      y = y.transpose(1, 2).contiguous().view(batch_size, seq_len, self.embedding_dimensions)
-
-      output = self.output_projection(y)
+    def forward(self, x):
+      output = self.sublayer(x)
       return output
-   
+
 class DecoderBlock(torch.nn.Module):
     def __init__(self, max_seq_len, embedding_dimensions, num_heads):
       super(DecoderBlock, self).__init__()
@@ -118,6 +94,39 @@ class CausalSublayer(torch.nn.Module):
       output = self.layer_norm(x)
       output = self.attn(output)
       output = self.attn_add_and_norm(output, residual_x)
+      return output
+    
+class MultiHeadAttention(torch.nn.Module):
+   def __init__(self, max_seq_len, embedding_dimensions, num_heads, is_causal=False):
+      super(MultiHeadAttention, self).__init__()
+      self.is_causal = is_causal
+      self.max_seq_len = max_seq_len
+      assert embedding_dimensions % num_heads == 0, "Embedding dimensions must be divisible by number of heads"
+      
+      self.register_buffer("mask", torch.tril(torch.ones(max_seq_len, max_seq_len)).view(1, 1, max_seq_len, max_seq_len))
+
+      self.num_heads = num_heads
+      self.embedding_dimensions = embedding_dimensions
+      self.head_size = embedding_dimensions // num_heads
+
+      self.qkv_projection = torch.nn.Linear(embedding_dimensions, 3 * embedding_dimensions)
+      self.output_projection = torch.nn.Linear(embedding_dimensions, embedding_dimensions)
+
+   def forward(self, x_embeddings):
+      batch_size, seq_len, _ = x_embeddings.size()
+
+      q, k, v  = self.qkv_projection(x_embeddings).split(self.embedding_dimensions, dim=2)
+      queries = q.view(batch_size, seq_len, self.num_heads, self.head_size).transpose(1, 2)
+      keys = k.view(batch_size, seq_len, self.num_heads, self.head_size).transpose(1, 2)
+      values = v.view(batch_size, seq_len, self.num_heads, self.head_size).transpose(1, 2)
+
+      att = (queries @ keys.transpose(-2, -1)) * (1.0 / math.sqrt(keys.size(-1)))
+      att = att if self.is_causal == False else att.masked_fill(self.mask[:, :, :seq_len, :seq_len] == 0, float('-inf'))
+      att = torch.nn.functional.softmax(att, dim=-1)
+      y = att @ values
+      y = y.transpose(1, 2).contiguous().view(batch_size, seq_len, self.embedding_dimensions)
+
+      output = self.output_projection(y)
       return output
 
 class AddAndNorm(torch.nn.Module):
