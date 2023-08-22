@@ -7,7 +7,7 @@ import numpy as np
 from utils.sentencepiece_tokenizer import SentencePieceTokenizer
 from config import get_num_stories
 from dataset import TinyStoriesDataset, pad
-from model import DecoderModel
+from model import Transformer
 
 
 # %%
@@ -51,7 +51,7 @@ train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=batch_size,
 val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=batch_size, shuffle=True, collate_fn=pad)
 
 
-model = DecoderModel(max_seq_len, vocab_len, embedding_dimensions)
+model = Transformer(max_seq_len, vocab_len, embedding_dimensions)
 model = model.to(device)
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 

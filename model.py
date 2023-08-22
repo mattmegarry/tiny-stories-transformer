@@ -4,9 +4,9 @@ import math
 dropout_rate = 0.1
 decoder_layers = 6
 
-class DecoderModel(torch.nn.Module):
+class Transformer(torch.nn.Module):
   def __init__(self, max_seq_len, vocab_len, embedding_dimensions):
-    super(DecoderModel, self).__init__()
+    super(Transformer, self).__init__()
     
     self.max_seq_len = max_seq_len
     self.vocab_len   = vocab_len
@@ -15,7 +15,7 @@ class DecoderModel(torch.nn.Module):
     self.embedding    = torch.nn.Embedding(self.vocab_len, self.embedding_dimensions)
     self.pos_emb      = self.get_pos_matrix()
     self.dropout      = torch.nn.Dropout(dropout_rate)
-    self.blocks = torch.nn.ModuleList([Block(self.max_seq_len, self.embedding_dimensions, 4) for _ in range(decoder_layers)])
+    self.blocks = torch.nn.ModuleList([DecoderBlock(self.max_seq_len, self.embedding_dimensions, 4) for _ in range(decoder_layers)])
     self.final_layer_norm = torch.nn.LayerNorm(self.embedding_dimensions)
     self.map_to_vocab = torch.nn.Linear(self.embedding_dimensions, self.vocab_len)
 
@@ -45,8 +45,9 @@ class DecoderModel(torch.nn.Module):
 
 
 class MultiHeadAttention(torch.nn.Module):
-   def __init__(self, max_seq_len, embedding_dimensions, num_heads):
+   def __init__(self, max_seq_len, embedding_dimensions, num_heads, is_causal=False):
       super(MultiHeadAttention, self).__init__()
+      self.is_causal = is_causal
       self.max_seq_len = max_seq_len
       assert embedding_dimensions % num_heads == 0, "Embedding dimensions must be divisible by number of heads"
       
@@ -68,7 +69,7 @@ class MultiHeadAttention(torch.nn.Module):
       values = v.view(batch_size, seq_len, self.num_heads, self.head_size).transpose(1, 2)
 
       att = (queries @ keys.transpose(-2, -1)) * (1.0 / math.sqrt(keys.size(-1)))
-      att = att.masked_fill(self.mask[:, :, :seq_len, :seq_len] == 0, float('-inf'))
+      att = att if self.is_causal == False else att.masked_fill(self.mask[:, :, :seq_len, :seq_len] == 0, float('-inf'))
       att = torch.nn.functional.softmax(att, dim=-1)
       y = att @ values
       y = y.transpose(1, 2).contiguous().view(batch_size, seq_len, self.embedding_dimensions)
@@ -76,11 +77,11 @@ class MultiHeadAttention(torch.nn.Module):
       output = self.output_projection(y)
       return output
 
-class Block(torch.nn.Module):
+class DecoderBlock(torch.nn.Module):
     def __init__(self, max_seq_len, embedding_dimensions, num_heads):
-      super(Block, self).__init__()
+      super(DecoderBlock, self).__init__()
       self.layer_norm = torch.nn.LayerNorm(embedding_dimensions)
-      self.attn = MultiHeadAttention(max_seq_len, embedding_dimensions, num_heads)
+      self.attn = MultiHeadAttention(max_seq_len, embedding_dimensions, num_heads, is_causal=True)
       self.attn_add_and_norm = AddAndNorm(embedding_dimensions)
       self.feed_forward = FeedForward(embedding_dimensions)
       self.feed_forward_add_and_norm = AddAndNorm(embedding_dimensions)
@@ -93,30 +94,6 @@ class Block(torch.nn.Module):
       output = self.feed_forward(residual_ff_x)
       output = self.feed_forward_add_and_norm(output, residual_ff_x)
       return output
-
-class SelfAttention(torch.nn.Module):
-    def __init__(self, max_seq_len, embedding_dimensions):
-        super(SelfAttention, self).__init__()
-        self.register_buffer('mask', torch.tril(torch.ones(max_seq_len, max_seq_len)))
-        self.key = torch.nn.Linear(embedding_dimensions, embedding_dimensions)
-        self.qry = torch.nn.Linear(embedding_dimensions, embedding_dimensions)
-        self.val = torch.nn.Linear(embedding_dimensions, embedding_dimensions)
-
-    def forward(self, x_embeddings, x):
-        key = self.key(x_embeddings)
-        qry = self.qry(x_embeddings)
-        val = self.val(x_embeddings)
-
-        k_transpose = key.permute(0,2,1)
-        att = torch.bmm(qry, k_transpose)
-        msk = self.mask[0:x.shape[1], 0:x.shape[1]]
-        batch_msk = msk.unsqueeze(0).expand(att.size())
-        att = att.masked_fill(batch_msk == 0, float('-inf'))
-        att = torch.nn.functional.softmax(att, dim=1)
-        res = torch.bmm(att, val)
-        return res
-
-
 
 class AddAndNorm(torch.nn.Module):
     def __init__(self, embedding_dimensions):
