@@ -1,3 +1,8 @@
+All runs fixed at 100 epochs
+All runs with 100 examples
+
+Decoder only training - source only
+
 Running generate...
 Generate: The maned was and they and they and they and the
 [1, 13, 233, 14, 10, 4, 8, 5, 12, 4, 8, 5, 12, 4, 8, 5, 12, 4, 8, 5]
@@ -10,6 +15,9 @@ Generate: Once upon a time, there was a little girl named Tim. Tim loved to
 Generate: Once upon a time, there was a little girl named Tim. Tim loved to
 [1, 48, 38, 53, 7, 42, 6, 43, 10, 7, 45, 71, 59, 11, 34, 3, 34, 76, 11, 9]
 
+Encoder-Decoder training - source only
+
+Encoder-Decoder training - source to target
 Replacements...
 little ---> not big
 named ---> that was called
