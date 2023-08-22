@@ -1,0 +1,16 @@
+Running generate...
+Generate: The maned was and they and they and they and the
+[1, 13, 233, 14, 10, 4, 8, 5, 12, 4, 8, 5, 12, 4, 8, 5, 12, 4, 8, 5]
+Generate: The woman time, there was a little girl named Tim. He wanted to play with
+[1, 13, 826, 42, 6, 43, 10, 7, 45, 71, 59, 11, 34, 3, 23, 63, 14, 9, 58, 28]
+Generate: In the beginning the park, there was a little girl named Tim. He
+[1, 251, 5, 616, 351, 67, 31, 5, 95, 6, 43, 10, 7, 45, 71, 59, 11, 34, 3, 23]
+Generate: Once upon a time, there was a little girl named Tim. Tim loved to
+[1, 48, 38, 53, 7, 42, 6, 43, 10, 7, 45, 71, 59, 11, 34, 3, 34, 76, 11, 9]
+Generate: Once upon a time, there was a little girl named Tim. Tim loved to
+[1, 48, 38, 53, 7, 42, 6, 43, 10, 7, 45, 71, 59, 11, 34, 3, 34, 76, 11, 9]
+
+Replacements...
+little ---> not big
+named ---> that was called
+Tim ---> the name that must never be spoken
