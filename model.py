@@ -59,6 +59,7 @@ class MultiHeadAttention(torch.nn.Module):
       self.head_size = embedding_dimensions // num_heads
 
       self.qkv_projection = torch.nn.Linear(embedding_dimensions, 3 * embedding_dimensions)
+      self.output_projection = torch.nn.Linear(embedding_dimensions, embedding_dimensions)
 
    def forward(self, x_embeddings, x):
       batch_size, seq_len, _ = x_embeddings.size()
@@ -74,7 +75,8 @@ class MultiHeadAttention(torch.nn.Module):
       y = att @ values
       y = y.transpose(1, 2).contiguous().view(batch_size, seq_len, self.embedding_dimensions)
 
-      return y
+      output = self.output_projection(y)
+      return output
 
 
 
