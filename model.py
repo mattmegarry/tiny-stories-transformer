@@ -76,16 +76,27 @@ class MultiHeadAttention(torch.nn.Module):
 
       output = self.output_projection(y)
       return output
-
+   
 class DecoderBlock(torch.nn.Module):
     def __init__(self, max_seq_len, embedding_dimensions, num_heads):
       super(DecoderBlock, self).__init__()
+      self.masked_sublayer = CausalSublayer(max_seq_len, embedding_dimensions, num_heads)
+      self.sublayer = NonCausalSublayer(max_seq_len, embedding_dimensions, num_heads)
+
+    def forward(self, x):
+      output = self.masked_sublayer(x)
+      output = self.sublayer(output)
+      return output
+    
+class NonCausalSublayer(torch.nn.Module):
+    def __init__(self, max_seq_len, embedding_dimensions, num_heads):
+      super(NonCausalSublayer, self).__init__()
       self.layer_norm = torch.nn.LayerNorm(embedding_dimensions)
-      self.attn = MultiHeadAttention(max_seq_len, embedding_dimensions, num_heads, is_causal=True)
+      self.attn = MultiHeadAttention(max_seq_len, embedding_dimensions, num_heads, is_causal=False)
       self.attn_add_and_norm = AddAndNorm(embedding_dimensions)
       self.feed_forward = FeedForward(embedding_dimensions)
       self.feed_forward_add_and_norm = AddAndNorm(embedding_dimensions)
-
+  
     def forward(self, x):
       residual_x = x
       output = self.layer_norm(x)
@@ -95,6 +106,20 @@ class DecoderBlock(torch.nn.Module):
       output = self.feed_forward_add_and_norm(output, residual_ff_x)
       return output
 
+class CausalSublayer(torch.nn.Module):
+    def __init__(self, max_seq_len, embedding_dimensions, num_heads):
+      super(CausalSublayer, self).__init__()
+      self.layer_norm = torch.nn.LayerNorm(embedding_dimensions)
+      self.attn = MultiHeadAttention(max_seq_len, embedding_dimensions, num_heads, is_causal=True)
+      self.attn_add_and_norm = AddAndNorm(embedding_dimensions)
+
+    def forward(self, x):
+      residual_x = x
+      output = self.layer_norm(x)
+      output = self.attn(output)
+      output = self.attn_add_and_norm(output, residual_x)
+      return output
+
 class AddAndNorm(torch.nn.Module):
     def __init__(self, embedding_dimensions):
         super(AddAndNorm, self).__init__()
@@ -102,8 +127,6 @@ class AddAndNorm(torch.nn.Module):
 
     def forward(self, sublayer_output, residual_x):
         return self.layer_norm(sublayer_output + residual_x)
-
-
 
 class FeedForward(torch.nn.Module):
    def __init__(self, embedding_dimensions, ff_expansion=4):
