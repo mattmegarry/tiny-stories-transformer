@@ -2,6 +2,7 @@ import torch
 import math
 
 dropout_rate = 0.1
+decoder_layers = 6
 
 class DecoderModel(torch.nn.Module):
   def __init__(self, max_seq_len, vocab_len, embedding_dimensions):
@@ -14,7 +15,7 @@ class DecoderModel(torch.nn.Module):
     self.embedding    = torch.nn.Embedding(self.vocab_len, self.embedding_dimensions)
     self.pos_emb      = self.get_pos_matrix()
     self.dropout      = torch.nn.Dropout(dropout_rate)
-    self.blocks = Block(self.max_seq_len, self.embedding_dimensions, 4)
+    self.blocks = torch.nn.ModuleList([Block(self.max_seq_len, self.embedding_dimensions, 4) for _ in range(decoder_layers)])
     self.final_layer_norm = torch.nn.LayerNorm(self.embedding_dimensions)
     self.map_to_vocab = torch.nn.Linear(self.embedding_dimensions, self.vocab_len)
 
@@ -22,9 +23,9 @@ class DecoderModel(torch.nn.Module):
     emb = self.embedding(x)
     pos = self.pos_emb[0:x.shape[1], :]
     pos_emb_x = emb + pos
-    pos_emb_x = self.dropout(pos_emb_x)
+    out = self.dropout(pos_emb_x)
 
-    out = self.blocks(pos_emb_x)
+    for block in self.blocks: out = block(out)
     out = self.final_layer_norm(out)
     out = self.map_to_vocab(out)
 
