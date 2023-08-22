@@ -1,7 +1,7 @@
 import torch
 import math
 
-
+dropout_rate = 0.1
 
 class DecoderModel(torch.nn.Module):
   def __init__(self, max_seq_len, vocab_len, embedding_dimensions):
@@ -13,6 +13,7 @@ class DecoderModel(torch.nn.Module):
 
     self.embedding    = torch.nn.Embedding(self.vocab_len, self.embedding_dimensions)
     self.pos_emb      = self.get_pos_matrix()
+    self.dropout      = torch.nn.Dropout(dropout_rate)
     self.blocks = Block(self.max_seq_len, self.embedding_dimensions, 4)
     self.final_layer_norm = torch.nn.LayerNorm(self.embedding_dimensions)
     self.map_to_vocab = torch.nn.Linear(self.embedding_dimensions, self.vocab_len)
@@ -21,6 +22,7 @@ class DecoderModel(torch.nn.Module):
     emb = self.embedding(x)
     pos = self.pos_emb[0:x.shape[1], :]
     pos_emb_x = emb + pos
+    pos_emb_x = self.dropout(pos_emb_x)
 
     out = self.blocks(pos_emb_x)
     out = self.final_layer_norm(out)
@@ -131,11 +133,13 @@ class FeedForward(torch.nn.Module):
       self.context_fully_connected = torch.nn.Linear(embedding_dimensions, embedding_dimensions * ff_expansion)
       self.relu = torch.nn.ReLU()
       self.context_projection = torch.nn.Linear(embedding_dimensions * ff_expansion, embedding_dimensions)
+      self.dropout = torch.nn.Dropout(dropout_rate)
 
    def forward(self, x):
       x = self.context_fully_connected(x)
       x = self.relu(x)
       x = self.context_projection(x)
+      x = self.dropout(x)
       return x
     
 
