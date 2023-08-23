@@ -102,9 +102,7 @@ class DecoderBlock(torch.nn.Module):
         print(causal_output.shape)
         print(source_k.shape)
         print(source_v.shape)
-        non_causal_input = torch.cat([causal_output, source_k, source_v], dim=-1)
-        non_causal_input = self.decoder_merge(non_causal_input)
-        output = self.unmasked_sublayer(non_causal_input)
+        output = self.unmasked_sublayer(causal_output, source_k, source_v)
       else:
         output = self.unmasked_sublayer(causal_output)
       return output
@@ -118,7 +116,7 @@ class NonCausalSublayer(torch.nn.Module):
       self.feed_forward = FeedForward(embedding_dimensions)
       self.feed_forward_add_and_norm = AddAndNorm(embedding_dimensions)
   
-    def forward(self, x):
+    def forward(self, query, key, value):
       residual_x = x
       output = self.layer_norm(x)
       output = self.attn(output)
